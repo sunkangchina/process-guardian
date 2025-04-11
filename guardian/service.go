@@ -80,17 +80,23 @@ func (d *Daemon) Stop() {
 	close(d.stopChan)
 	log.Println("Stopping process guardian")
 	
+	// 停止所有进程
+	d.processManager.StopAll()
+	
 	// 关闭日志文件
 	if d.logFile != nil {
 		d.logFile.Close()
 	}
-	
-	// 清理所有进程
-	for _, app := range d.config.ProtectedApps {
-		if app.Cmd != nil && app.Cmd.Process != nil {
-			app.Cmd.Process.Kill()
-		}
-	}
+}
+
+func (d *Daemon) Pause() {
+	log.Println("Pausing process guardian")
+	d.processManager.StopAll()
+}
+
+func (d *Daemon) Resume() error {
+	log.Println("Resuming process guardian")
+	return d.Start()
 }
 
 func (d *Daemon) monitorLoop() {

@@ -1,9 +1,9 @@
 package guardian
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-	"fmt"
 )
 
 func protectFile(path string) error {

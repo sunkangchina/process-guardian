@@ -80,7 +80,7 @@ func onReady() {
 			<-mPause.ClickedCh
 			if isPaused {
 				// 恢复运行
-				if err := daemon.Start(); err != nil {
+				if err := daemon.Resume(); err != nil {
 					log.Printf("Failed to resume daemon: %v", err)
 					continue
 				}
@@ -88,7 +88,7 @@ func onReady() {
 				isPaused = false
 			} else {
 				// 暂停运行
-				daemon.Stop()
+				daemon.Pause()
 				mPause.SetTitle("开始")
 				isPaused = true
 			}

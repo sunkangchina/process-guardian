@@ -1,13 +1,14 @@
 package guardian
 
 import (
-	"fmt"  
+	"fmt"
+	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
-	"os"
 )
 
 type ProcessManager struct {
@@ -27,6 +28,14 @@ func (pm *ProcessManager) StartAll() {
 }
 
 func (pm *ProcessManager) StartProcess(app *ProtectedApp) {
+	// 检查进程是否已经存在
+	if pm.IsProcessRunning(app) {
+		log.Printf("Process %s is already running, terminating it first", app.Name)
+		pm.StopProcess(app)
+		// 等待进程完全终止
+		time.Sleep(time.Second)
+	}
+
 	if app.currentRestarts >= app.MaxRestarts {
 		return
 	}
@@ -70,18 +79,32 @@ func (pm *ProcessManager) StartProcess(app *ProtectedApp) {
 	}
 
 	if err := cmd.Start(); err != nil {
+		log.Printf("Failed to start process %s: %v", app.Name, err)
 		return
 	}
 
+	// 保存 Cmd 对象
+	app.Cmd = cmd
 	app.currentRestarts++
 	app.lastRestart = time.Now().UnixNano()
+	log.Printf("Started process %s (PID: %d)", app.Name, cmd.Process.Pid)
 
 	go func() {
 		cmd.Wait()
+		app.Cmd = nil // 进程结束后清除 Cmd 对象
+		log.Printf("Process %s has terminated", app.Name)
 	}()
 }
 
 func (pm *ProcessManager) IsProcessRunning(app *ProtectedApp) bool {
+	if app.Cmd != nil && app.Cmd.Process != nil {
+		// 首先检查我们自己的 Cmd 对象
+		if err := app.Cmd.Process.Signal(syscall.Signal(0)); err == nil {
+			return true
+		}
+	}
+
+	// 使用 tasklist 检查进程是否存在
 	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", filepath.Base(app.Path)))
 	output, err := cmd.Output()
 	if err != nil {
@@ -152,4 +175,28 @@ func (pm *ProcessManager) checkProcess(app *ProtectedApp) error {
 	}
 
 	return nil
+}
+
+func (pm *ProcessManager) StopAll() {
+	for i := range pm.config.ProtectedApps {
+		pm.StopProcess(&pm.config.ProtectedApps[i])
+	}
+}
+
+func (pm *ProcessManager) StopProcess(app *ProtectedApp) {
+	if app.Cmd != nil && app.Cmd.Process != nil {
+		log.Printf("Stopping process %s (PID: %d)", app.Name, app.Cmd.Process.Pid)
+		// 尝试优雅关闭
+		if err := app.Cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			// 如果优雅关闭失败，强制终止
+			app.Cmd.Process.Kill()
+		}
+		app.Cmd = nil
+	} else {
+		// 如果 Cmd 对象不存在，尝试通过进程名终止
+		cmd := exec.Command("taskkill", "/F", "/IM", filepath.Base(app.Path))
+		if err := cmd.Run(); err != nil {
+			log.Printf("Failed to kill process %s: %v", app.Name, err)
+		}
+	}
 }

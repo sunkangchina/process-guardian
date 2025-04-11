@@ -1,3 +1,5 @@
-2025/04/11 22:08:17 service.go:44: Process Guardian started (log path: logs/process-guardian.log)
-2025/04/11 22:08:17 service.go:67: Starting process guardian
-2025/04/11 22:08:40 service.go:81: Stopping process guardian
+2025/04/11 22:38:29 service.go:44: Process Guardian started (log path: logs/process-guardian.log)
+2025/04/11 22:38:29 service.go:67: Starting process guardian
+2025/04/11 22:38:30 process.go:90: Started process TestPHP (PID: 18820)
+2025/04/11 22:38:37 service.go:81: Stopping process guardian
+2025/04/11 22:38:37 process.go:188: Stopping process TestPHP (PID: 18820)
