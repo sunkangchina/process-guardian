@@ -1,0 +1,15 @@
+{
+    "protected_apps": [ 
+      {
+        "name": "TestPHP",
+        "path": "这里是PHP文件路径",
+        "arguments": " ",
+        "restart_delay": 10000,
+        "max_restarts": 10,
+        "auto_start": true
+      }
+    ],
+    "monitor_interval": 3000,
+    "log_path": "",
+    "enable_file_protection": true
+}
