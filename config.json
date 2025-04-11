@@ -2,7 +2,7 @@
     "protected_apps": [ 
       {
         "name": "TestPHP",
-        "path": "这里是PHP文件路径",
+        "path": "D:\\www\\github\\test\\index.php",
         "arguments": " ",
         "restart_delay": 10000,
         "max_restarts": 10,
@@ -10,6 +10,6 @@
       }
     ],
     "monitor_interval": 3000,
-    "log_path": "",
+    "log_path": "logs/process-guardian.log",
     "enable_file_protection": true
 }

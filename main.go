@@ -1,13 +1,15 @@
 package main
 
 import (
+	"io/ioutil"
+	"log"
 	"os"
 	"os/signal"
-	"syscall"
-	"io/ioutil"
-	"github.com/getlantern/systray"
 	"process-guardian/guardian"
 	"runtime"
+	"syscall"
+
+	"github.com/getlantern/systray"
 )
 
 var (
@@ -45,7 +47,10 @@ func main() {
 
 func onReady() {
 	// 加载并设置图标
-	if icon, err := ioutil.ReadFile("icon.ico"); err == nil {
+	icon, iconErr := ioutil.ReadFile("icon.ico")
+	if iconErr != nil {
+		log.Printf("Failed to load icon: %v", iconErr)
+	} else {
 		systray.SetIcon(icon)
 	}
 	systray.SetTooltip("Process Guardian - 进程守护")
@@ -56,14 +61,16 @@ func onReady() {
 	mQuit := systray.AddMenuItem("退出", "退出程序")
 
 	// 初始化守护进程
-	var err error
-	daemon, err = guardian.NewDaemon("config.json")
-	if err != nil {
+	var daemonErr error
+	daemon, daemonErr = guardian.NewDaemon("config.json")
+	if daemonErr != nil {
+		log.Printf("Failed to initialize daemon: %v", daemonErr)
 		os.Exit(1)
 	}
 
 	// 启动守护进程
 	if err := daemon.Start(); err != nil {
+		log.Printf("Failed to start daemon: %v", err)
 		os.Exit(1)
 	}
 
@@ -73,7 +80,10 @@ func onReady() {
 			<-mPause.ClickedCh
 			if isPaused {
 				// 恢复运行
-				daemon.Start()
+				if err := daemon.Start(); err != nil {
+					log.Printf("Failed to resume daemon: %v", err)
+					continue
+				}
 				mPause.SetTitle("暂停")
 				isPaused = false
 			} else {

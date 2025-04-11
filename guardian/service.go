@@ -1,11 +1,11 @@
 package guardian
 
 import (
+	"fmt"
 	"log"
 	"os"
-	"time"
-	"fmt"
 	"path/filepath"
+	"time"
 )
 
 type Daemon struct {
@@ -21,7 +21,12 @@ func NewDaemon(configPath string) (*Daemon, error) {
         return nil, fmt.Errorf("failed to load config: %v", err)
     }
 
-    // 自动创建日志目录（如果不存在）
+    // 如果日志路径为空，使用默认路径
+    if config.LogPath == "" {
+        config.LogPath = "logs/process-guardian.log"
+    }
+
+    // 确保日志目录存在
     logDir := filepath.Dir(config.LogPath)
     if err := os.MkdirAll(logDir, 0755); err != nil {
         return nil, fmt.Errorf("failed to create log directory '%s': %v", logDir, err)
@@ -33,8 +38,10 @@ func NewDaemon(configPath string) (*Daemon, error) {
         return nil, fmt.Errorf("failed to open log file '%s': %v", config.LogPath, err)
     }
 
+    // 设置日志输出
     log.SetOutput(logFile)
-    log.Printf("Initialized logger (path: %s)", config.LogPath)
+    log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+    log.Printf("Process Guardian started (log path: %s)", config.LogPath)
 
     return &Daemon{
         config:         config,
@@ -72,6 +79,18 @@ func (d *Daemon) Start() error {
 func (d *Daemon) Stop() {
 	close(d.stopChan)
 	log.Println("Stopping process guardian")
+	
+	// 关闭日志文件
+	if d.logFile != nil {
+		d.logFile.Close()
+	}
+	
+	// 清理所有进程
+	for _, app := range d.config.ProtectedApps {
+		if app.Cmd != nil && app.Cmd.Process != nil {
+			app.Cmd.Process.Kill()
+		}
+	}
 }
 
 func (d *Daemon) monitorLoop() {
