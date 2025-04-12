@@ -32,18 +32,4 @@ go build -ldflags "-H windowsgui -s -w" -o process-guardian.exe
 双击 `process-guardian.exe`
 
 
-
-# 安装为Windows服务
-
-~~~
-@echo off
-set SERVICE_NAME=GoProcessGuardian
-set EXE_PATH=%~dp0process-guardian.exe
-
-sc create %SERVICE_NAME% binPath= "%EXE_PATH%" start= auto
-sc description %SERVICE_NAME% "守护进程服务 - 监控和重启关键应用程序"
-sc start %SERVICE_NAME%
-
-echo Service installed and started
-pause
-~~~
+ 
