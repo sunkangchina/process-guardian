@@ -32,4 +32,4 @@ go build -ldflags "-H windowsgui -s -w" -o process-guardian.exe
 双击 `process-guardian.exe`
 
 
- 
+将在托盘区看到守护进程的图标，点击图标有退出按钮
