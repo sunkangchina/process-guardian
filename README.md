@@ -40,7 +40,7 @@ go build -ldflags "-H windowsgui -s -w" -o process-guardian.exe
 
 `src`下的
 
-- icon.icon  
+- icon.ico
 - config.json
 
 需要一起复制过去。
