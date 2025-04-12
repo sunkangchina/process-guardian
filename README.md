@@ -26,7 +26,7 @@
 ## 编译为可执行文件
 
 ~~~
-go build -o process-guardian.exe
+go build -ldflags "-H windowsgui -s -w" -o process-guardian.exe
 ~~~
 
 双击 `process-guardian.exe`

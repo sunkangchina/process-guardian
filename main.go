@@ -21,26 +21,9 @@ func init() {
 	// 确保在 Windows 下运行时使用正确的线程模型
 	runtime.LockOSThread()
 }
+ 
 
-func hideConsole() {
-	if runtime.GOOS == "windows" {
-		// 获取当前进程的控制台窗口
-		kernel32 := syscall.NewLazyDLL("kernel32.dll")
-		user32 := syscall.NewLazyDLL("user32.dll")
-		getConsoleWindow := kernel32.NewProc("GetConsoleWindow")
-		showWindow := user32.NewProc("ShowWindow")
-		
-		hwnd, _, _ := getConsoleWindow.Call()
-		if hwnd != 0 {
-			showWindow.Call(hwnd, 0) // SW_HIDE = 0
-		}
-	}
-}
-
-func main() {
-	// 隐藏控制台窗口
-	hideConsole()
-	
+func main() {  
 	// 启动系统托盘
 	systray.Run(onReady, onExit)
 }

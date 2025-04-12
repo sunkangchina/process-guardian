@@ -11,8 +11,26 @@ import (
 	"time"
 )
 
+const (
+	CREATE_NO_WINDOW         = 0x08000000
+	DETACHED_PROCESS        = 0x00000008
+	CREATE_BREAKAWAY_FROM_JOB = 0x01000000
+)
+
 type ProcessManager struct {
 	config *Config
+}
+
+// setProcessAttributes 设置进程的启动属性，确保不显示窗口
+func setProcessAttributes(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_BREAKAWAY_FROM_JOB,
+	}
+	// 确保不继承标准输入输出
+	cmd.Stdin = nil
+	cmd.Stdout = nil
+	cmd.Stderr = nil
 }
 
 func NewProcessManager(config *Config) *ProcessManager {
@@ -28,7 +46,6 @@ func (pm *ProcessManager) StartAll() {
 }
 
 func (pm *ProcessManager) StartProcess(app *ProtectedApp) {
-	// 检查进程是否已经在运行
 	if pm.IsProcessRunning(app) {
 		log.Printf("进程 %s 已在运行中，跳过启动", app.Name)
 		return
@@ -58,10 +75,8 @@ func (pm *ProcessManager) StartProcess(app *ProtectedApp) {
 		cmd = exec.Command(app.Path, strings.Fields(app.Arguments)...)
 	}
 
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
-	}
+	// 设置进程属性，确保不显示窗口
+	setProcessAttributes(cmd)
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("启动进程 %s 失败：%v", app.Name, err)
@@ -81,19 +96,18 @@ func (pm *ProcessManager) StartProcess(app *ProtectedApp) {
 }
 
 func (pm *ProcessManager) IsProcessRunning(app *ProtectedApp) bool {
-	// 首先检查我们自己管理的进程
 	if app.Cmd != nil && app.Cmd.Process != nil {
-		// 使用 tasklist 检查 PID 是否存在
 		cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", app.Cmd.Process.Pid), "/FO", "CSV", "/NH")
+		setProcessAttributes(cmd)
 		output, err := cmd.Output()
 		if err == nil && strings.Contains(string(output), fmt.Sprintf("%d", app.Cmd.Process.Pid)) {
 			return true
 		}
 	}
 
-	// 如果我们的进程不存在，检查是否有同名进程
 	processName := filepath.Base(app.Path)
 	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", processName), "/FO", "CSV", "/NH")
+	setProcessAttributes(cmd)
 	output, err := cmd.Output()
 	if err == nil && strings.Contains(string(output), processName) {
 		return true
@@ -106,19 +120,15 @@ func (pm *ProcessManager) Monitor() {
 	for i := range pm.config.ProtectedApps {
 		app := &pm.config.ProtectedApps[i]
 		
-		// 如果进程已经在运行，继续监控下一个
 		if pm.IsProcessRunning(app) {
 			continue
 		}
 		
-		// 如果进程不在运行，且允许自动启动，则尝试启动
 		if app.AutoStart {
-			// 检查重启限制
 			if app.currentRestarts >= app.MaxRestarts {
 				continue
 			}
 			
-			// 检查重启延迟
 			if time.Since(time.Unix(0, app.lastRestart)) < time.Duration(app.RestartDelay)*time.Millisecond {
 				continue
 			}
@@ -139,18 +149,16 @@ func (pm *ProcessManager) restartProcess(app *ProtectedApp) error {
 	}
 
 	if app.NeedCompile {
-		cmd := exec.Command("go", "build", "-o", app.Path)
-		cmd.Dir = filepath.Dir(app.Path)
-		if err := cmd.Run(); err != nil {
+		compileCmd := exec.Command("go", "build", "-o", app.Path)
+		compileCmd.Dir = filepath.Dir(app.Path)
+		setProcessAttributes(compileCmd)
+		if err := compileCmd.Run(); err != nil {
 			return fmt.Errorf("编译失败: %v", err)
 		}
 	}
 
 	cmd := exec.Command(app.Path, strings.Fields(app.Arguments)...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
-	}
+	setProcessAttributes(cmd)
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("启动失败: %v", err)
@@ -202,9 +210,9 @@ func (pm *ProcessManager) StopProcess(app *ProtectedApp) {
 		
 		// 如果进程还在运行，强制终止
 		if pm.IsProcessRunning(app) {
-			processName := filepath.Base(app.Path)
-			cmd := exec.Command("taskkill", "/F", "/IM", processName)
-			_ = cmd.Run()
+			killCmd := exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", app.Cmd.Process.Pid))
+			setProcessAttributes(killCmd)
+			_ = killCmd.Run()
 		}
 	}
 	
