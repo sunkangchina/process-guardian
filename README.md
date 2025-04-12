@@ -1,8 +1,10 @@
 # windows守护进程 
 
+# src 目录
+
 ## 配置
 
-请查看 `config.json`
+1. 请查看 `config.json`
 
 ~~~
 {
@@ -23,7 +25,7 @@
 ~~~
 
 
-## 编译为可执行文件
+2. 编译为可执行文件
 
 ~~~
 go build -ldflags "-H windowsgui -s -w" -o process-guardian.exe
@@ -33,3 +35,30 @@ go build -ldflags "-H windowsgui -s -w" -o process-guardian.exe
 
 
 将在托盘区看到守护进程的图标，点击图标有退出按钮
+
+## 复制生成的exe文件至bin目录
+
+`src`下的
+
+- icon.icon  
+- config.json
+
+需要一起复制过去。
+
+
+## 演示效果
+
+![](./doc/1.jpg)
+
+![](./doc/2.jpg)
+
+
+php 代码演示
+
+~~~
+<?php 
+while (true) {
+   file_put_contents(__DIR__.'/1.txt', date("Y-m-d H:i:s")."\n",FILE_APPEND);
+   sleep(1);
+}
+~~~
